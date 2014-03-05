@@ -1,0 +1,3 @@
+['http://www.homeshop18.com/groceries/category:16469/', 'Groceries']
+['http://www.homeshop18.com/services/category:1332/', 'Services']
+['http://www.homeshop18.com/books/category:10000/', 'Books']

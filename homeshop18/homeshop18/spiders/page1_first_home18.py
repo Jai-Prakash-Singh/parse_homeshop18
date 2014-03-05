@@ -54,7 +54,10 @@ def driver_scroller(driver):
 
 
 
-def main2(ml_mt_sub):
+def main2(ml_mt_sub, filename):
+  
+    f = open(filename, "a+")
+
     menulink = ml_mt_sub[0]
     menutitle = ml_mt_sub[1]
     
@@ -79,25 +82,25 @@ def main2(ml_mt_sub):
 	        sub_catolink = "%s%s" %("http://www.homeshop18.com", str(al.get("href")).strip())
                 sub_catotext = al.get("title")
 
-                print menulink, menutitle, catolink, catotitle, sub_catolink, sub_catotext
+                print >>f, ','.join([menulink, menutitle, catolink, catotitle, sub_catolink, sub_catotext])
                 
 	else:
-	   print menulink, menutitle, catolink, catotitle, catolink, catotitle
+	   print >>f, ','.join([menulink, menutitle, catolink, catotitle, catolink, catotitle])
+
+    f.close()
 
 
 
 
 def mainthreading2(i, q):
-    for ml_mt_sub in iter(q.get, None):
-        #print ml_mt_sub
+    for ml_mt_sub , filename in iter(q.get, None):
         try:
-            main2(ml_mt_sub)
+            main2(ml_mt_sub, filename)
 
         except:
-            f = open("page1_first_error.txt", "a+")
-            print >>f, ml_mt_sub
-            f.close()
-
+            f2 = open("page1_first_error.txt", "a+")
+            print >>f2, ml_mt_sub
+            f2.close()
 
         time.sleep(2)
         q.task_done()
@@ -108,6 +111,13 @@ def mainthreading2(i, q):
 
 	
 def mainthreading(ml_mt):
+
+    f = open("to_extract.txt", "a+")
+    directory = f.read().strip()
+    f.close()
+
+    filename = "%s/%s" %(directory, "f_ml_mt_ctt_ctl_sl_st.txt")
+    
     procs = []
   
     for i in range(num_fetch_threads):
@@ -116,7 +126,7 @@ def mainthreading(ml_mt):
         procs[-1].start()
 
     for  ml_mt_sub in ml_mt:
-        enclosure_queue.put(ml_mt_sub)
+        enclosure_queue.put((ml_mt_sub, filename))
 
     print '*** Main thread waiting'
     enclosure_queue.join()
@@ -133,10 +143,29 @@ def mainthreading(ml_mt):
     print "Finished everything...."
     print "num active children:", multiprocessing.active_children()
 
+    print "closing file...."
     
 
 
+
 def main():
+
+    directory = "dir%s" %(time.strftime("%d%m%Y"))
+
+    try:
+        os.makedirs(directory)
+
+    except:
+        pass
+
+    f = open("to_extract.txt", "w+")
+    print >>f, directory
+    f.close()
+
+    f = open("extracted.txt", "a+")
+    print >>f, directory
+    f.close()
+
     link = "http://www.homeshop18.com/all-stores.html"
 
     driver = phan_proxy.main(link)
