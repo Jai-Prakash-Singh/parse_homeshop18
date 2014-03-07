@@ -12,10 +12,11 @@ import os
 import req_proxy
 import multiprocessing
 import logging
+import sys
 
 logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s',)
 
-num_fetch_threads = 10
+num_fetch_threads = 20
 enclosure_queue = multiprocessing.JoinableQueue()
 
 
@@ -54,8 +55,7 @@ def driver_scroller(driver):
 
 
 
-def main2(ml_mt_sub, filename):
-  
+def main2(ml_mt_sub, filename):  
     f = open(filename, "a+")
 
     menulink = ml_mt_sub[0]
@@ -111,7 +111,6 @@ def mainthreading2(i, q):
 
 	
 def mainthreading(ml_mt):
-
     f = open("to_extract.txt", "a+")
     directory = f.read().strip()
     f.close()
@@ -143,13 +142,10 @@ def mainthreading(ml_mt):
     print "Finished everything...."
     print "num active children:", multiprocessing.active_children()
 
-    print "closing file...."
-    
 
 
 
 def main():
-
     directory = "dir%s" %(time.strftime("%d%m%Y"))
 
     try:
@@ -202,13 +198,106 @@ def main():
 	 menulink = "%s%s" %("http://www.homeshop18.com", str(lt.get("href")).strip())
          menutitle = str(lt.get_text()).strip()
          ml_mt.append([menulink , menutitle])
-      
+     
     mainthreading(ml_mt)
          
 
 
 
+def part_second(line, filename2):
+    f = open(filename2, "a+")
+    
+    line2 = line.strip().split(",")
+    menulink  = line2[0].strip()
+    menutitle = line2[1].strip()
+    catlink = line2[2].strip()
+    cattitle = line2[3].replace("\n","").strip()
+    subcatlink = line2[-2].strip()
+    subcattitle = line2[-1].strip()
+
+    page = req_proxy.main(subcatlink)
+    soup = BeautifulSoup(page)
+
+    tag_brand = soup.find("div", text=re.compile("Brand"))
+    blbtbc_list = tag_brand.parent.parent.find_all("li", attrs={"class":"srch_ctgry_item"})
+
+    for blbtbc in blbtbc_list:
+        brandlink = "%s%s" %("http://www.homeshop18.com", str(blbtbc.a.get("href")).strip())
+        brandtitle = str(blbtbc.a.get( "title")).replace("\n", "").strip()
+        
+        print >>f, ','.join([menulink, menutitle, catlink, cattitle, subcatlink, subcattitle, brandlink, brandtitle])
+        print menulink, menutitle, catlink, cattitle, subcatlink, subcattitle, brandlink, brandtitle
+	print "*"*145
+    
+    f.close()
+
+
+
+
+def part_threading2(i, q):
+    for  ml_mt_ctt_ctl_sl_st, filename2 in iter(q.get, None):
+        try:
+            part_second(ml_mt_ctt_ctl_sl_st, filename2)
+        
+        except:
+            f2 = open("page2_first_error.txt", "a+")
+            print >>f2, ml_mt_ctt_ctl_sl_st
+            f2.close()
+
+        time.sleep(2)
+        q.task_done()
+
+    q.task_done()
+
+
+
+
+def part_threading():
+    f = open("to_extract.txt", "a+")
+    directory = f.read().strip()
+    f.close()
+
+    filename = "%s/%s" %(directory, "f_ml_mt_ctt_ctl_sl_st.txt")
+    
+    filename2 = "%s/%s" %(directory, "f_ml_mt_ctt_ctl_sl_st_bl_bt.txt")
+    f = open(filename)
+    
+    procs = []
+
+    for i in range(num_fetch_threads):
+        procs.append(multiprocessing.Process(target=part_threading2, args=(i, enclosure_queue,)))
+        #worker.setDaemon(True)
+        procs[-1].start()
+
+    for  ml_mt_ctt_ctl_sl_st  in f:
+        enclosure_queue.put((ml_mt_ctt_ctl_sl_st, filename2))
+
+    print '*** Main thread waiting'
+    enclosure_queue.join()
+    print '*** Done'
+
+    for p in procs:
+        enclosure_queue.put(None)
+
+    enclosure_queue.join()
+
+    for p in procs:
+        p.join()
+
+    print "Finished everything...."
+    print "num active children:", multiprocessing.active_children()
+
+    print "closing file...."
+    f.close()
+
+    
+def supermain():
+    #main()   
+    part_threading()
+
+
+
+
 if __name__=="__main__":
-    main()
-    #ml_mt_sub = ['http://www.homeshop18.com/jewellery/category:3376/', 'jewellery']
-    #main2(ml_mt_sub)
+    supermain()
+
